@@ -1,5 +1,7 @@
 # Canvas Patch Images
 
+[中文部署与维护手册](CUSTOM_BUILD.zh-CN.md)
+
 This branch preserves the local Canvas fixes, including resumable Grok video generation through Sub2API. The MIT license and upstream attribution remain intact.
 
 Repository: https://github.com/mju1314/infinite-canvas/tree/patch/grok-video
