@@ -1,0 +1,15 @@
+name: canvas-grok
+
+services:
+  infinite-canvas:
+    image: ${CANVAS_IMAGE:?Set CANVAS_IMAGE in .env}
+    pull_policy: never
+    container_name: infinite-canvas
+    restart: unless-stopped
+    networks:
+      - sub2api_network
+
+networks:
+  sub2api_network:
+    external: true
+    name: ${CANVAS_NETWORK:-sub2api_sub2api-network}

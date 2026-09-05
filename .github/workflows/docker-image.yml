@@ -1,34 +1,57 @@
-name: Docker image
+name: Canvas patch image
 
 on:
   push:
-    tags: ["v*"]
+    branches: ["patch/grok-video"]
+    tags: ["grok-video-*"]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
-env:
-  IMAGE_NAME: ghcr.io/basketikun/infinite-canvas
+concurrency:
+  group: canvas-patch-image-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+      - name: Install locked dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Test video requests and task recovery
+        working-directory: web
+        run: bun test ./tests/video.test.ts
+
   meta:
     runs-on: ubuntu-latest
     outputs:
+      image: ${{ steps.image.outputs.name }}
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
     steps:
+      - id: image
+        shell: bash
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ steps.image.outputs.name }}
           tags: |
             type=ref,event=tag
-            type=sha,prefix=
+            type=sha,prefix=sha-
+            type=raw,value=grok-video,enable=${{ github.ref_type == 'branch' }}
 
   build:
-    needs: meta
+    needs: [test, meta]
+    env:
+      IMAGE_NAME: ${{ needs.meta.outputs.image }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -80,6 +103,8 @@ jobs:
       - meta
       - build
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ needs.meta.outputs.image }}
     steps:
       - uses: docker/setup-buildx-action@v3
 
@@ -113,3 +138,12 @@ jobs:
           done < <(find "$RUNNER_TEMP/digests" -type f -printf '%f\n' | sort)
 
           docker buildx imagetools create "${tag_args[@]}" "${digest_args[@]}"
+
+      - name: Record published images
+        env:
+          TAGS: ${{ needs.meta.outputs.tags }}
+        run: |
+          echo 'Published Canvas patch images:' >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          echo "$TAGS" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

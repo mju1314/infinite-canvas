@@ -4,6 +4,8 @@
 
 <h1 align="center">无限画布 (infinite-canvas)</h1>
 
+> 本分支为个人维护版本，保留 Grok 视频生成与任务恢复补丁。[自定义镜像、服务器部署和后续更新](docs/CUSTOM_BUILD.md)。
+
 <p align="center">
   <a href="https://linux.do/"><img src="https://img.shields.io/badge/Linux.do-Community-2b6de8?style=flat-square" alt="Linux.do"></a>
   <a href="https://render.com/deploy?repo=https://github.com/basketikun/infinite-canvas"><img src="https://img.shields.io/badge/Render-Deploy-46e3b7?style=flat-square&logo=render&logoColor=111111" alt="Deploy to Render"></a>
