@@ -199,7 +199,15 @@ function grokVideoAspectRatio(value: string) {
     let divisor = width;
     let remainder = height;
     while (remainder) [divisor, remainder] = [remainder, divisor % remainder];
-    return `${width / divisor}:${height / divisor}`;
+    const ratio = `${width / divisor}:${height / divisor}`;
+
+    // Grok仅支持常见的宽高比：16:9（横屏）、9:16（竖屏）、1:1（方形）
+    const supportedRatios = ["16:9", "9:16", "1:1"];
+    if (!supportedRatios.includes(ratio)) {
+        throw new Error(i18n.t("grokVideoErrors.unsupportedRatio", { ratio, size: value }));
+    }
+
+    return ratio;
 }
 
 async function videoResultFromUrl(url: string, options?: RequestOptions): Promise<VideoGenerationResult> {

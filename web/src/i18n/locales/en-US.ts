@@ -48,6 +48,7 @@ export default {
     grokVideoErrors: {
         singleReference: "Grok video currently supports one first-frame reference image. Remove the extra images and try again.",
         invalidSize: "Invalid video size or ratio. Use auto, 16:9, or 1280x720 with positive integer dimensions.",
+        unsupportedRatio: "Grok video does not support {{ratio}} aspect ratio ({{size}}). Please use landscape (16:9), portrait (9:16), or square (1:1).",
     },
     prompts: {
         title: "Prompt Center",

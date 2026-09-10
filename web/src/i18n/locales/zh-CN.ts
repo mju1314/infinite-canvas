@@ -48,6 +48,7 @@ export default {
     grokVideoErrors: {
         singleReference: "Grok 视频当前仅支持一张首帧参考图，请移除多余图片后重试",
         invalidSize: "视频尺寸或比例无效，请使用 auto、16:9 或 1280x720，宽高必须为正整数",
+        unsupportedRatio: "Grok 视频不支持 {{ratio}} 比例（{{size}}），请使用横屏（16:9）、竖屏（9:16）或方形（1:1）",
     },
     prompts: {
         title: "提示词中心",
