@@ -55,10 +55,15 @@ describe("Grok video through Sub2API", () => {
         expect(requests[0].url).toBe("https://relay.example/v1/videos");
     });
 
-    test.each([["720x1280", "9:16"], ["1024x1024", "1:1"], ["4:3", "4:3"], ["auto", undefined]])("preserves aspect ratio %s", async (size, ratio) => {
+    test.each([["720x1280", "9:16"], ["1024x1024", "1:1"], ["auto", undefined]])("preserves aspect ratio %s", async (size, ratio) => {
         responses.push({ data: { request_id: "remote-1" } });
         await createVideoGenerationTask({ ...configFor(), size: size! }, "A red ball");
         expect(JSON.parse(requests[0].data).aspect_ratio).toBe(ratio);
+    });
+
+    test.each([["1792x1024", "7:4"], ["1024x1792", "4:7"], ["800x600", "4:3"]])("rejects unsupported aspect ratio %s without submitting", async (size, ratio) => {
+        await expect(createVideoGenerationTask({ ...configFor(), size }, "A red ball")).rejects.toThrow("grokVideoErrors.unsupportedRatio");
+        expect(requests).toHaveLength(0);
     });
 
     test("resumes from persisted metadata without creating another task", async () => {
