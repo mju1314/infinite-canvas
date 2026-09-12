@@ -24,6 +24,7 @@ export default {
         download: "Download",
         upload: "Upload",
         requestCanceled: "Request canceled",
+        requestTimeout: "Request timed out. The image may still be generating. If charged, please refresh the page later to check the result",
         durationMinutes: "{{minutes}}m {{seconds}}s",
         durationSeconds: "{{seconds}}s",
         imageReadFailed: "Failed to read image",

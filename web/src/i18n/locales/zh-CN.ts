@@ -24,6 +24,7 @@ export default {
         download: "下载",
         upload: "上传",
         requestCanceled: "请求已取消",
+        requestTimeout: "请求超时，图片可能仍在生成中。如果已扣费，请稍后刷新页面查看结果",
         durationMinutes: "{{minutes}}分{{seconds}}秒",
         durationSeconds: "{{seconds}}秒",
         imageReadFailed: "读取图片失败",
