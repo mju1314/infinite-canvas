@@ -80,7 +80,13 @@ type GeminiPart = {
     text?: string;
     inlineData?: { mimeType?: string; data?: string };
     inline_data?: { mime_type?: string; mimeType?: string; data?: string };
-    fileData?: { mimeType?: string; fileUri?: string };
+    fileData?: { mimeType?: string; fileUri?: string; file_uri?: string; uri?: string };
+    file_data?: { mimeType?: string; mime_type?: string; fileUri?: string; file_uri?: string; uri?: string };
+    imageUrl?: string | { url?: string };
+    image_url?: string | { url?: string };
+    url?: string;
+    uri?: string;
+    b64_json?: string;
     functionCall?: { id?: string; name?: string; args?: Record<string, unknown> };
     functionResponse?: { id?: string; name?: string; response?: Record<string, unknown> };
     thoughtSignature?: string;
@@ -89,6 +95,7 @@ type GeminiPart = {
 type GeminiContent = { role?: "user" | "model"; parts: GeminiPart[] };
 type GeminiPayload = {
     candidates?: Array<{ content?: { parts?: GeminiPart[] }; finishReason?: string }>;
+    data?: unknown[];
     models?: Array<{ name?: string }>;
     error?: { message?: string };
     promptFeedback?: { blockReason?: string };
@@ -701,18 +708,46 @@ async function requestGeminiImagesOnce(config: AiConfig, prompt: string, referen
 
 function parseGeminiImagePayload(payload: GeminiPayload) {
     validateGeminiPayload(payload);
-    const images =
-        payload.candidates
-            ?.flatMap((candidate) => candidate.content?.parts || [])
-            .map((part) => {
-                const inlineData = part.inlineData || (part.inline_data ? { mimeType: part.inline_data.mimeType || part.inline_data.mime_type, data: part.inline_data.data } : undefined);
-                if (inlineData?.data) return `data:${inlineData.mimeType || "image/png"};base64,${inlineData.data}`;
-                return part.fileData?.fileUri || null;
-            })
-            .filter((value): value is string => Boolean(value))
-            .map((dataUrl) => ({ id: nanoid(), dataUrl })) || [];
+    const parts = payload.candidates?.flatMap((candidate) => candidate.content?.parts || []) || [];
+    const partImages = parts.map(geminiPartImageSource).filter((value): value is string => Boolean(value));
+    // Some OpenAI-compatible relays wrap a hosted Gemini image in `data` even
+    // when the request was made through the native Gemini endpoint.
+    const wrappedImages = Array.isArray(payload.data)
+        ? payload.data.map(genericImageSource).filter((value): value is string => Boolean(value))
+        : [];
+    const images = [...partImages, ...wrappedImages].map((dataUrl) => ({ id: nanoid(), dataUrl }));
     if (!images.length) throw new Error(apiText("geminiNoImage"));
     return images;
+}
+
+function geminiPartImageSource(part: GeminiPart) {
+    const inlineData = part.inlineData || (part.inline_data ? { mimeType: part.inline_data.mimeType || part.inline_data.mime_type, data: part.inline_data.data } : undefined);
+    if (inlineData?.data) return imageDataSource(inlineData.data, inlineData.mimeType);
+    const fileData = part.fileData || part.file_data;
+    const fileUri = fileData?.fileUri || fileData?.file_uri || fileData?.uri;
+    if (fileUri) return fileUri;
+    return genericImageSource(part);
+}
+
+function genericImageSource(value: unknown): string | null {
+    if (typeof value === "string") return /^https?:\/\//i.test(value) || value.startsWith("data:image/") ? value : null;
+    if (!value || typeof value !== "object") return null;
+    const record = value as Record<string, unknown>;
+    const nested = [record.url, record.uri, record.imageUrl, record.image_url].find((item) => typeof item === "string") as string | undefined;
+    if (nested) return genericImageSource(nested);
+    const nestedObject = [record.imageUrl, record.image_url].find((item) => item && typeof item === "object");
+    if (nestedObject) return genericImageSource(nestedObject);
+    if (typeof record.text === "string") {
+        const match = record.text.match(/https?:\/\/[^\s)\]>'"]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s)\]>'"]*)?/i);
+        if (match) return match[0];
+    }
+    if (typeof record.b64_json === "string") return imageDataSource(record.b64_json, typeof record.mimeType === "string" ? record.mimeType : undefined);
+    return null;
+}
+
+function imageDataSource(data: string, mimeType?: string) {
+    if (/^(?:https?:\/\/|data:image\/)/i.test(data)) return data;
+    return `data:${mimeType || "image/png"};base64,${data}`;
 }
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {

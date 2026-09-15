@@ -14,15 +14,17 @@ mock.module("../src/services/api/model-plugin", () => ({ normalizePluginImages: 
 const { requestGeneration } = await import("../src/services/api/image");
 
 let requests: InternalAxiosRequestConfig[];
+let responsePayload: unknown;
 
 beforeEach(() => {
     requests = [];
+    responsePayload = {
+        candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: "aGVsbG8=" } }] } }],
+    };
     axios.defaults.adapter = async (config) => {
         requests.push(config);
         return {
-            data: {
-                candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: "aGVsbG8=" } }] } }],
-            },
+            data: responsePayload,
             status: 200,
             statusText: "OK",
             headers: new AxiosHeaders(),
@@ -68,5 +70,33 @@ describe("Gemini image request format", () => {
         const body = JSON.parse(String(requests[0].data));
         expect(body.generationConfig).toEqual({ responseModalities: ["TEXT", "IMAGE"] });
         expect(body.generationConfig.responseFormat).toBeUndefined();
+    });
+
+    test("accepts hosted URLs returned as snake_case Gemini file data", async () => {
+        responsePayload = {
+            candidates: [{ content: { parts: [{ file_data: { mime_type: "image/jpeg", file_uri: "https://gemini9.example/generation/result.jpg" } }] } }],
+        };
+
+        const images = await requestGeneration(geminiConfig(), "A red ball");
+
+        expect(images[0]?.dataUrl).toBe("https://gemini9.example/generation/result.jpg");
+    });
+
+    test("accepts hosted URLs wrapped in an OpenAI-style data array", async () => {
+        responsePayload = { data: [{ url: "https://gemini9.example/generation/result.jpg" }] };
+
+        const images = await requestGeneration(geminiConfig(), "A red ball");
+
+        expect(images[0]?.dataUrl).toBe("https://gemini9.example/generation/result.jpg");
+    });
+
+    test("extracts a hosted image URL from a relay text part", async () => {
+        responsePayload = {
+            candidates: [{ content: { parts: [{ text: "![generated image](https://gemini9.example/generation/result.jpg)" }] } }],
+        };
+
+        const images = await requestGeneration(geminiConfig(), "A red ball");
+
+        expect(images[0]?.dataUrl).toBe("https://gemini9.example/generation/result.jpg");
     });
 });
